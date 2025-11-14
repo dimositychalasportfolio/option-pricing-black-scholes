@@ -48,6 +48,34 @@ def rho(S, K, r, sigma, T):
     D2 = d2(S, K, r, sigma, T)
     return K * T * math.exp(-r * T) * norm.cdf(D2)
 
+def implied_vol_call(market_price, S, K, r, T, initial_sigma=0.2, tol=1e-6, max_iter=100):
+    """
+    Υπολογίζει την implied volatility για ένα call option
+    με μέθοδο Newton-Raphson, χρησιμοποιώντας τη vega.
+    """
+    sigma = initial_sigma
+
+    for _ in range(max_iter):
+        # Τιμή call από Black–Scholes με το τωρινό sigma
+        price = call_price(S, K, r, sigma, T)
+
+        # Πόσο απέχει από την market price
+        diff = price - market_price
+
+        # Αν είμαστε αρκετά κοντά, σταμάτα
+        if abs(diff) < tol:
+            return sigma
+
+        # Παράγωγος ως προς sigma = vega
+        v = vega(S, K, r, sigma, T)
+        if v == 0:
+            break
+
+        # Newton–Raphson update
+        sigma -= diff / v
+
+    return sigma  # αν δεν συγκλίνει τέλεια, επιστρέφει την τελευταία τιμή
+
 def get_stock_price_and_vol(ticker, period="1y"):
     """
     Κατεβάζει την τελευταία τιμή S και υπολογίζει annualized volatility.
@@ -108,4 +136,10 @@ if __name__ == "__main__":
     print("Call delta:", call_delta(S, K, r, sigma, T))
     print("Put delta:", put_delta(S, K, r, sigma, T))
 
+    # Παράδειγμα implied vol:
+    market_call = call_price(S, K, r, sigma, T)  # υποθέτουμε ότι αυτή είναι η τιμή αγοράς
+    iv = implied_vol_call(market_call, S, K, r, T)
+
+    print(f"Market call price: {market_call:.4f}")
+    print(f"Recovered implied vol: {iv:.4f}")
 

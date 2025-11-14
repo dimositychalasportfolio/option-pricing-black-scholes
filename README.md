@@ -1,17 +1,33 @@
 # Option Pricing with the Black–Scholes Model
 
-This project implements the Black–Scholes model to price European call and put options in Python.  
-It also computes the Greeks (Delta), which show how sensitive an option is to changes in the stock price.
+This project implements the Black–Scholes model in Python to price European call and put options, 
+compute option Greeks, estimate historical volatility from market data, and recover implied volatility 
+from market option prices. It also includes a Jupyter notebook with visualizations.
 
 ---
 
-## Features
-- Pricing for European **call** and **put** options  
-- Computation of **d1** and **d2**  
-- Calculation of **Delta** for calls and puts  
-- Fully implemented using pure Python and SciPy  
-- Includes a simple test block to demonstrate numerical output
+## Overview
+
+The project shows how to:
+
+- Use the **Black–Scholes formula** for European options  
+- Fetch **real market data** (e.g. AAPL) with `yfinance`  
+- Compute **historical volatility** from price returns  
+- Calculate the main **Greeks**: Delta, Gamma, Vega, Theta, Rho  
+- Solve for **implied volatility** using a Newton–Raphson method  
+- Visualize option prices and Greeks in a **Jupyter notebook**
+
+This is designed as a quant-style portfolio project.
 
 ---
 
 ## Project Structure
+
+```text
+option-pricing-black-scholes/
+│
+├─ black_scholes.py             # core Black–Scholes implementation + Greeks + IV solver
+├─ notebooks/
+│   └─ option_pricing_demo.ipynb  # notebook with plots and examples
+├─ requirements.txt             # Python dependencies
+└─ README.md                    # project documentation
