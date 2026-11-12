@@ -46,3 +46,21 @@ def test_drops_far_strikes_bad_quotes_and_impossible_prices():
     assert 90.0 not in set(smile["strike"]) and 95.0 not in set(smile["strike"])
     assert smile["moneyness"].between(0.7, 1.3).all()
     assert len(smile) == 11  # 70..130 in steps of 5 = 13 strikes, minus the two bad ones
+
+
+def test_script_runs_end_to_end_with_simulated_market_data(monkeypatch, tmp_path, capsys):
+    from datetime import date
+
+    import market_data
+
+    calls, puts = fake_chain()
+    rng = np.random.default_rng(0)
+    closes = pd.Series(S * np.exp(np.cumsum(rng.normal(0, 0.01, 252))))
+    closes.iloc[-1] = S
+    monkeypatch.setattr(market_data, "close_prices", lambda ticker, period: closes)
+    monkeypatch.setattr(market_data, "option_chain", lambda ticker, min_days: (date(2027, 2, 19), 91, calls, puts))
+    monkeypatch.setattr(sys, "argv", ["vol_smile.py", "test"])
+    monkeypatch.chdir(tmp_path)
+    vol_smile.main()
+    assert (tmp_path / "smile_TEST.png").exists()
+    assert "Saved smile_TEST.png" in capsys.readouterr().out
