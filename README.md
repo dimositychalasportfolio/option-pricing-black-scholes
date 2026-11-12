@@ -1,7 +1,8 @@
-# Black-Scholes Option Pricing: Prices, Greeks and Implied Volatility
+# Option Pricing Lab: Black-Scholes, Binomial Trees, Monte Carlo and Delta Hedging
 
-A tested Python implementation of the Black-Scholes-Merton model for European options, with a command-line tool
-that compares the volatility implied by real option prices with the volatility measured from past returns.
+A tested Python toolkit for pricing equity options and understanding where their value and risk come from:
+closed-form Black-Scholes-Merton prices and Greeks, American options on a binomial tree, Monte Carlo with variance
+reduction, a delta-hedging simulation, and implied-volatility tools for real option chains.
 
 ## What it does
 
@@ -10,8 +11,13 @@ that compares the volatility implied by real option prices with the volatility m
 - Recovers **implied volatility** with Brent's method, which always converges inside its search range, and rejects
   prices that break the no-arbitrage bounds (where no volatility can fit).
 - Estimates **historical volatility** from daily log returns.
+- Prices **American options** on a Cox-Ross-Rubinstein binomial tree and measures the **early-exercise premium**.
+- Prices by **Monte Carlo**, with standard errors and two variance-reduction methods (antithetic draws and a control
+  variate); together they cut the standard error about fourfold for the same number of paths.
+- **Simulates delta hedging** a short option: the hedging error falls with the square root of the number of
+  rebalances, and selling volatility above what the stock realises earns about vega x (implied - realised) on average.
 - `price_option.py` downloads a year of prices and an at-the-money option quote and reports **implied versus
-  historical volatility**.
+  historical volatility**; `vol_smile.py` plots **implied volatility across strikes** for a ticker.
 - All functions work on NumPy arrays, so a whole grid of spots, strikes or volatilities is priced in one call.
 
 ## Run
@@ -20,6 +26,7 @@ that compares the volatility implied by real option prices with the volatility m
 pip install -r requirements.txt
 python price_option.py AAPL                  # needs internet (Yahoo Finance via yfinance)
 python price_option.py MSFT --rate 0.04 --dividend-yield 0.007
+python vol_smile.py SPY                      # implied volatility smile, saved as smile_SPY.png
 ```
 
 Example output (from the test suite's simulated quotes, priced at 35% volatility):
@@ -41,7 +48,7 @@ A model price computed with historical volatility will usually differ from the m
 that the option is mispriced. It shows that the market expects a different volatility from the one measured in the
 past. Comparing the two volatilities states this directly.
 
-The notebook `option_pricing_demo.ipynb` runs offline and walks through prices, the Greeks and implied volatility.
+The notebook `option_pricing_demo.ipynb` runs offline and walks through every part: prices, Greeks, implied volatility, binomial trees, Monte Carlo and delta hedging.
 
 ## Results
 
@@ -50,6 +57,33 @@ The notebook `option_pricing_demo.ipynb` runs offline and walks through prices, 
 ![Delta, gamma, vega and theta for a call and a put](figures/2_greeks.png)
 
 ![Implied volatility found where the model price meets the market price](figures/3_implied_volatility.png)
+
+### American options on a binomial tree
+
+The European price on the tree oscillates towards Black-Scholes as steps increase; the American put is worth more
+because it can be exercised early, and that premium grows as the put goes deeper in the money.
+
+![Binomial tree convergence and early-exercise premium](figures/4_binomial_tree.png)
+
+### Monte Carlo and variance reduction
+
+![Monte Carlo estimates with 95% intervals, plain vs variance-reduced](figures/5_monte_carlo.png)
+
+| Method (100,000 paths) | Standard error |
+|---|---|
+| Plain | 0.026 |
+| Antithetic draws | 0.019 |
+| Control variate (stock price) | 0.012 |
+| Both | 0.006 |
+
+### Delta hedging
+
+Selling a 3-month at-the-money call and delta hedging it. Left: the spread of the final P&L falls in line with
+1 / sqrt(rebalances). Right: when the option is sold 10 volatility points above what the stock then realises, the
+hedged position earns +1.99 on average, close to the vega approximation of 1.97; selling 10 points too cheap loses
+about the same.
+
+![Hedging error against rebalancing frequency and P&L under different volatilities](figures/6_delta_hedging.png)
 
 ## The model
 
@@ -76,15 +110,25 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The 22 tests check prices against the textbook example in Hull (S = 42, K = 40, r = 10%, sigma = 20%, T = 0.5:
-call 4.76, put 0.81), put-call parity with and without dividends, every Greek against a numerical derivative of the
-price, implied volatility round trips from 5% to 200%, rejection of impossible prices, and the command-line script
-with simulated market data.
+The 49 tests run in about two seconds without internet. They check:
+
+- Black-Scholes against the textbook example in Hull (S = 42, K = 40, r = 10%, sigma = 20%, T = 0.5: call 4.76,
+  put 0.81), put-call parity with and without dividends, and every Greek against a numerical derivative.
+- Implied volatility round trips from 5% to 200%, and rejection of prices outside the no-arbitrage bounds.
+- The binomial tree against Hull's 5-step American put (4.49), convergence to Black-Scholes, and that an American call
+  on a non-dividend stock is never exercised early.
+- Monte Carlo estimates within four standard errors of the formula, and that variance reduction shrinks the error.
+- The hedging simulation: near-zero mean P&L when implied equals realised volatility, error halving when rebalances
+  quadruple, and the sign of the P&L when they differ.
+- The smile code recovering a known volatility smile from a simulated option chain, and both scripts with simulated
+  market data.
 
 ## Limitations
 
-- European exercise only. Most US single-stock options are American, so for those the results are approximations,
-  most of all for puts and for stocks paying dividends.
+- `price_option.py` and `vol_smile.py` use Black-Scholes, i.e. European exercise. Most US single-stock options are
+  American, so their implied volatilities are approximations, most of all for puts and for dividend payers;
+  `binomial.py` prices the American version.
+- The hedging simulation assumes no transaction costs and a constant realised volatility.
 - Constant volatility and rates: Black-Scholes does not produce the volatility smile seen in real option markets.
 - Yahoo Finance quotes can be delayed or stale; the script uses the bid-ask mid when both are available.
 
@@ -94,7 +138,11 @@ with simulated market data.
 |---|---|
 | `black_scholes.py` | Pricing, Greeks, implied and historical volatility (no internet needed) |
 | `market_data.py` | Price history and option quotes from Yahoo Finance |
+| `binomial.py` | Cox-Ross-Rubinstein tree for European and American options |
+| `monte_carlo.py` | Monte Carlo pricing with antithetic draws and a control variate |
+| `hedging.py` | Delta-hedging simulation |
 | `price_option.py` | Command-line tool: implied vs historical volatility for a ticker |
+| `vol_smile.py` | Command-line tool: implied volatility across strikes for a ticker |
 | `option_pricing_demo.ipynb` | Offline walk-through with charts |
 | `tests/` | Test suite |
 | `docs/` | Earlier notes on the theory |

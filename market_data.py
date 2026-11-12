@@ -69,3 +69,17 @@ def atm_option_quote(ticker: str, spot: float, min_days: int = 7) -> OptionQuote
     put = chain.puts.loc[chain.puts["strike"] == strike].iloc[0]
     expiry_date = pd.to_datetime(expiry).date()
     return OptionQuote(expiry_date, float(strike), _mid(call), _mid(put), (expiry_date - today).days)
+
+
+def option_chain(ticker: str, min_days: int = 14) -> tuple[date, int, pd.DataFrame, pd.DataFrame]:
+    """Calls and puts (with a `mid` column) for the first expiry at least `min_days` away."""
+    tkr = _yfinance().Ticker(ticker)
+    today = pd.Timestamp.today().date()
+    usable = [e for e in (tkr.options or []) if (pd.to_datetime(e).date() - today).days >= min_days]
+    if not usable:
+        raise ValueError(f"No option expiries at least {min_days} days away for {ticker}.")
+    expiry = pd.to_datetime(usable[0]).date()
+    chain = tkr.option_chain(usable[0])
+    calls = chain.calls.assign(mid=chain.calls.apply(_mid, axis=1))
+    puts = chain.puts.assign(mid=chain.puts.apply(_mid, axis=1))
+    return expiry, (expiry - today).days, calls, puts
