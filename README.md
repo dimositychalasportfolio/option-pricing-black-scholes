@@ -110,7 +110,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The 49 tests run in about two seconds without internet. They check:
+The 50 tests run in about two seconds without internet. They check:
 
 - Black-Scholes against the textbook example in Hull (S = 42, K = 40, r = 10%, sigma = 20%, T = 0.5: call 4.76,
   put 0.81), put-call parity with and without dividends, and every Greek against a numerical derivative.
